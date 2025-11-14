@@ -46,7 +46,7 @@ class FaceDataCollector:
         person_dir = self.create_person_directory(person_name)
         
         # Initialize webcam
-        cap = cv2.VideoCapture(2) # Check the camera index that works for you!
+        cap = cv2.VideoCapture(0) # Check the camera index that works for you!
         
         if not cap.isOpened():
             print("Error: Could not access webcam")
@@ -205,7 +205,7 @@ def main():
     """Main function to run the face data collection."""
     
     # Configuration
-    PEOPLE = ["Pallav"]  # Change these names
+    PEOPLE = ["Alexis"]  # Change these names
     IMAGES_PER_PERSON = 50  # Adjust as needed
     DATA_DIR = "face_data"  # Directory to save images
     
