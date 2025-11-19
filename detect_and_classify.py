@@ -8,7 +8,7 @@ MODEL_PATH = 'face_classifier_transfer_final.keras'
 IMG_HEIGHT = 224
 IMG_WIDTH = 224
 
-CONFIDENCE_THRESHOLD = 0.5
+CONFIDENCE_THRESHOLD = 0.99
 
 
 def load_model_and_face_detector():
@@ -114,17 +114,18 @@ def draw_prediction(frame, x, y, w, h, label, confidence):
         label: Predicted class name
         confidence: Confidence score
     """
-    color = (0, 255, 0) if confidence > CONFIDENCE_THRESHOLD else (0, 165, 255)
-    
-    cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
-    
-    text = f"{label}: {confidence*100:.1f}%"
-    
-    (text_width, text_height), baseline = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
-    
-    cv2.rectangle(frame, (x, y - text_height - 10), (x + text_width, y), color, -1)
-    
-    cv2.putText(frame, text, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+    if confidence > CONFIDENCE_THRESHOLD:
+        color = (0, 255, 0)
+        
+        cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
+        
+        text = f"{label}: {confidence*100:.1f}%"
+        
+        (text_width, text_height), baseline = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+        
+        cv2.rectangle(frame, (x, y - text_height - 10), (x + text_width, y), color, -1)
+        
+        cv2.putText(frame, text, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
 
 
 def process_image(image_path, model, face_cascade, class_names, output_path=None):
