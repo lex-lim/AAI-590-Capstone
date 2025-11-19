@@ -1,2 +1,4 @@
-test.py
+test*.py
 face_data
+.venv
+.vscode
