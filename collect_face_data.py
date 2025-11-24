@@ -205,7 +205,7 @@ def main():
     """Main function to run the face data collection."""
     
     # Configuration
-    PEOPLE = ["Alexis"]  # Change these names
+    PEOPLE = ["Dimitri"]  # Change these names
     IMAGES_PER_PERSON = 50  # Adjust as needed
     DATA_DIR = "face_data"  # Directory to save images
     

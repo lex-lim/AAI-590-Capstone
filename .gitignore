@@ -1,4 +1,6 @@
 test*.py
-face_data
+face_data*
 .venv
 .vscode
+.DS_Store
+app/api/__pycache__
