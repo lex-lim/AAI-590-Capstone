@@ -7,7 +7,7 @@ from typing import Tuple, Optional, List
 
 IMG_HEIGHT = 224
 IMG_WIDTH = 224
-CONFIDENCE_THRESHOLD = 0.90
+CONFIDENCE_THRESHOLD = 0.99
 
 # Global variables to store loaded model and detector
 _model = None
@@ -25,7 +25,7 @@ def get_model_path() -> str:
     api_dir = os.path.dirname(os.path.abspath(__file__))
     # Go up two levels: app/api -> app -> AAI-590-Capstone root
     root_dir = os.path.dirname(os.path.dirname(api_dir))
-    model_path = os.path.join(root_dir, 'face_classifier_transfer_final.keras')
+    model_path = os.path.join(root_dir, 'facial recognition/face_classifier_transfer_final.keras')
     return model_path
 
 

@@ -4,7 +4,7 @@ from tensorflow import keras
 from tensorflow.keras.preprocessing import image as keras_image
 import os
 
-MODEL_PATH = 'face_classifier_transfer_final.keras'
+MODEL_PATH = 'facial recognition/face_classifier_transfer_final.keras'
 IMG_HEIGHT = 224
 IMG_WIDTH = 224
 
