@@ -4,3 +4,4 @@ face_data*
 .vscode
 .DS_Store
 app/api/__pycache__
+app/api/venv
