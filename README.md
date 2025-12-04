@@ -17,7 +17,8 @@ Assistant behavior adapts based on the detected user.
 Identity → Intent → Tool routing pipeline, compatible with LLM-based reasoning.
 
   
-##How It Works
+## How It Works
+
 **1. Face Recognition**
 
 -Uses a MobileNetV2 backbone (ImageNet pretrained).
