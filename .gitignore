@@ -5,3 +5,4 @@ face_data*
 .DS_Store
 app/api/__pycache__
 app/api/venv
+key.ts

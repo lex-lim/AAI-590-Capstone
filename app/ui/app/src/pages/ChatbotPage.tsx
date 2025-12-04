@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { mockClassifyIntent, mockGetActivatedServers, type MCPServer } from '../services/mockApi';
 
+import { client } from './client';
+
 interface Message {
   id: string;
   text: string;
@@ -11,7 +13,7 @@ interface Message {
 export default function ChatbotPage() {
   // Get authenticated user name from localStorage
   const authenticatedUser = localStorage.getItem('authenticatedUser') || 'there';
-  
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -32,7 +34,7 @@ export default function ChatbotPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!inputText.trim() || isProcessing) {
       return;
     }
@@ -49,6 +51,20 @@ export default function ChatbotPage() {
     setIsProcessing(true);
 
     try {
+      const data = await client.beta.messages.create({
+        max_tokens: 1024,
+        messages: [{ content: userMessage.text, role: 'user' }],
+        model: 'claude-sonnet-4-5-20250929',
+      });
+
+      const textBlocks = data.content
+        .filter(block => block.type === "text")
+        .map(block => block.text);
+
+      // Join with newlines (or however you want)
+      const allText = textBlocks.join("\n");
+
+      /*
       // Classify intent
       const intentResult = await mockClassifyIntent(userMessage.text);
       
@@ -56,10 +72,13 @@ export default function ChatbotPage() {
       const servers = mockGetActivatedServers(intentResult.intent);
       setActivatedServers(servers);
 
+      */
+
+
       // Generate mock bot response
       const botResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: `I understand you're asking about "${intentResult.intent}". I've activated ${servers.length} MCP server(s) to help with your request.`,
+        text: allText,
         sender: 'bot',
         timestamp: new Date(),
       };

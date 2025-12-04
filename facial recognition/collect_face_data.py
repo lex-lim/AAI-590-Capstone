@@ -18,7 +18,7 @@ class FaceDataCollector:
             base_dir: Base directory to store collected face images
         """
         self.base_dir = base_dir
-        self.face_cascade = cv2.CascadeClassifier(
+        self.face_cascade = cv2.CascadeClassifier( cv2.data.haarcascades +
     'haarcascade_frontalface_default.xml'
 )
         
@@ -205,7 +205,7 @@ def main():
     """Main function to run the face data collection."""
     
     # Configuration
-    PEOPLE = ["Dimitri"]  # Change these names
+    PEOPLE = ["Pallav"]  # Change these names
     IMAGES_PER_PERSON = 50  # Adjust as needed
     DATA_DIR = "face_data"  # Directory to save images
     

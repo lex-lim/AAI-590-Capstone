@@ -8,7 +8,7 @@ MODEL_PATH = 'facial recognition/face_classifier_transfer_final.keras'
 IMG_HEIGHT = 224
 IMG_WIDTH = 224
 
-CONFIDENCE_THRESHOLD = 0.99
+CONFIDENCE_THRESHOLD = 0.90
 
 
 def load_model_and_face_detector():

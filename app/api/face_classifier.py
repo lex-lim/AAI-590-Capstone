@@ -7,7 +7,7 @@ from typing import Tuple, Optional, List
 
 IMG_HEIGHT = 224
 IMG_WIDTH = 224
-CONFIDENCE_THRESHOLD = 0.99
+CONFIDENCE_THRESHOLD = 0.90
 
 # Global variables to store loaded model and detector
 _model = None
@@ -149,6 +149,8 @@ def process_frames(frames: List[str]) -> Tuple[Optional[str], float, dict]:
             face_img = frame[y:y+h, x:x+w]
             
             predicted_class, confidence, all_probs = classify_face(model, face_img, class_names)
+            print(predicted_class)
+            print(confidence)
             
             # Only consider predictions above confidence threshold
             if confidence >= CONFIDENCE_THRESHOLD:
