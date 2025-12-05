@@ -1,0 +1,155 @@
+import sys
+import os
+import webbrowser
+import time
+import pvporcupine
+from pvrecorder import PvRecorder
+
+class WakeWordBrowserLauncher:
+    def __init__(self, access_key=None, keywords=["porcupine"], url="http://google.com"):
+        """
+        Initialize the wake word browser launcher.
+        
+        Args:
+            access_key: Picovoice access key (optional for built-in keywords)
+            keywords: List of wake words to detect
+            url: URL to open in browser when wake word is detected
+        """
+        self.access_key = access_key
+        self.keywords = keywords
+        self.url = url
+        self.porcupine = None
+        self.recorder = None
+        self.is_running = False
+        self.paused = False
+        
+    def initialize(self):
+        """Initialize Porcupine and audio recorder."""
+        try:
+            # Initialize Porcupine with built-in keywords
+            if self.access_key:
+                self.porcupine = pvporcupine.create(
+                    access_key=self.access_key,
+                    keywords=self.keywords
+                )
+            else:
+                # Try without access key (uses built-in keywords)
+                self.porcupine = pvporcupine.create(keywords=self.keywords)
+            
+            # Initialize audio recorder
+            self.recorder = PvRecorder(
+                device_index=-1,  # Use default audio device
+                frame_length=self.porcupine.frame_length
+            )
+            
+            print(f"Wake word detector initialized")
+            print(f"Listening for wake word(s): {', '.join(self.keywords)}")
+            print(f"Target URL: {self.url}")
+            print(f"Audio device: {self.recorder.selected_device}")
+            return True
+            
+        except Exception as e:
+            print(f"Error initializing: {e}")
+            return False
+    
+    def open_browser(self):
+        """Open the URL in the default browser."""
+        try:
+            print(f"\nOpening browser: {self.url}")
+            webbrowser.open(self.url)
+            print(f"Browser opened successfully!")
+            
+        except Exception as e:
+            print(f"Error opening browser: {e}")
+    
+    def start(self):
+        """Start listening for wake word."""
+        if not self.initialize():
+            return
+        
+        self.is_running = True
+        self.recorder.start()
+        
+        print("\n" + "="*60)
+        print("LISTENING FOR WAKE WORD...")
+        print("="*60)
+        print(f"Say '{self.keywords[0]}' to open browser")
+        print(f"Say '{self.keywords[0]}' again while paused to resume listening")
+        print("Press Ctrl+C to stop\n")
+        
+        try:
+            while self.is_running:
+                # Read audio frame
+                pcm = self.recorder.read()
+                
+                # Process audio frame
+                keyword_index = self.porcupine.process(pcm)
+                
+                # Wake word detected
+                if keyword_index >= 0:
+                    detected_keyword = self.keywords[keyword_index]
+                    print(f"\nWake word '{detected_keyword}' detected!")
+                    
+                    if not self.paused:
+                        # Open browser and pause
+                        self.open_browser()
+                        self.paused = True
+                        print("\n" + "="*60)
+                        print("PAUSED - Wake word detection stopped")
+                        print("="*60)
+                        print(f"Close your browser tab, then say '{detected_keyword}' to resume")
+                        print("Or press Ctrl+C to exit\n")
+                    else:
+                        # Resume listening
+                        self.paused = False
+                        print("\n" + "="*60)
+                        print("RESUMED - Listening for wake word...")
+                        print("="*60)
+                        print(f"Say '{detected_keyword}' to open browser again\n")
+                    
+        except KeyboardInterrupt:
+            print("\n\nStopping wake word detector...")
+        except Exception as e:
+            print(f"\nError: {e}")
+            import traceback
+            traceback.print_exc()
+        finally:
+            self.stop()
+    
+    def stop(self):
+        """Stop the detector and clean up resources."""
+        self.is_running = False
+        
+        if self.recorder:
+            try:
+                self.recorder.stop()
+            except:
+                pass
+            self.recorder.delete()
+        
+        if self.porcupine:
+            self.porcupine.delete()
+        
+        print("Cleanup complete")
+
+def main():
+    
+    URL = "http://localhost:5173"
+    KEYWORDS = ["computer"]
+    ACCESS_KEY = 'ee5XhjyCvgWH8dhY4yFfIEd5EGo9yLjJYHoMFYni2HmrkwJZBV8eNw=='
+    
+    # Check for access key in environment variable
+    if not ACCESS_KEY:
+        ACCESS_KEY = os.environ.get('PICOVOICE_ACCESS_KEY')
+    
+    # Create and start launcher
+    launcher = WakeWordBrowserLauncher(
+        access_key=ACCESS_KEY,
+        keywords=KEYWORDS,
+        url=URL
+    )
+    
+    launcher.start()
+
+if __name__ == "__main__":
+    main()
