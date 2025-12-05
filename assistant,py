@@ -134,7 +134,7 @@ class WakeWordBrowserLauncher:
 
 def main():
     
-    URL = "http://localhost:8000"
+    URL = "http://localhost:5173"
     KEYWORDS = ["computer"]
     ACCESS_KEY = 'ee5XhjyCvgWH8dhY4yFfIEd5EGo9yLjJYHoMFYni2HmrkwJZBV8eNw=='
     

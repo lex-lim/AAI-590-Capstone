@@ -1,12 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { mockClassifyIntent, mockGetActivatedServers, type MCPServer } from '../services/mockApi';
-
 import { client } from './client';
 
 interface Message {
   id: string;
   text: string;
-  sender: 'user' | 'bot';
+  sender: 'user' | 'assistant';
   timestamp: Date;
 }
 
@@ -18,7 +17,7 @@ export default function ChatbotPage() {
     {
       id: '1',
       text: `Hello ${authenticatedUser}! How can I help you today?`,
-      sender: 'bot',
+      sender: 'assistant',
       timestamp: new Date(),
     },
   ]);
@@ -27,10 +26,41 @@ export default function ChatbotPage() {
   const [activatedServers, setActivatedServers] = useState<MCPServer[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const PYTHON_API_URL = 'http://localhost:8080';
+
   useEffect(() => {
     // Auto-scroll to bottom when new messages are added
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Fetch tools from Python server
+  const getTools = async () => {
+    try {
+      const response = await fetch(`${PYTHON_API_URL}/tools`);
+      const data = await response.json();
+      return data.tools;
+    } catch (error) {
+      console.error('Error fetching tools:', error);
+      return [];
+    }
+  };
+
+  // Execute tool via Python server
+  const executeTool = async (name: string, args: any) => {
+    const response = await fetch(`${PYTHON_API_URL}/execute`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, arguments: args })
+    });
+    
+    const data = await response.json();
+    
+    if (data.error) {
+      throw new Error(data.result);
+    }
+    
+    return data.result;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,36 +80,102 @@ export default function ChatbotPage() {
     setInputText('');
     setIsProcessing(true);
 
+    const history = messages.map(m => ({
+      role: m.sender,
+      content: m.text
+    }));
+
+    history.push({
+      role: userMessage.sender,
+      content: userMessage.text
+    });
+
     try {
-      const data = await client.beta.messages.create({
-        max_tokens: 1024,
-        messages: [{ content: userMessage.text, role: 'user' }],
+      console.log('Fetching tools from Python server...');
+      const tools = await getTools();
+      console.log(`Loaded ${tools.length} tools`);
+
+      // Update activated servers display
+      if (tools.length > 0) {
+        setActivatedServers([{
+          name: 'Assistant Tools',
+          description: `${tools.length} tools available: ${tools.map((t: any) => t.name).join(', ')}`
+        }]);
+      }
+
+      console.log('Calling Claude with tools...');
+      let response = await client.beta.messages.create({
+        max_tokens: 2000,
+        messages: history,
         model: 'claude-sonnet-4-5-20250929',
+        tools: tools, // Pass tools from Python server
       });
 
-      const textBlocks = data.content
-        .filter(block => block.type === "text")
-        .map(block => block.text);
+      let conversationHistory = [...history];
+      let iterations = 0;
+      const MAX_ITERATIONS = 5;
 
-      // Join with newlines (or however you want)
+      // Handle tool calls
+      while (response.content.some((block: any) => block.type === 'tool_use') && iterations < MAX_ITERATIONS) {
+        iterations++;
+        console.log(`Tool call iteration ${iterations}`);
+
+        const toolUses = response.content.filter((block: any) => block.type === 'tool_use');
+        console.log(`Claude wants to use ${toolUses.length} tool(s):`, toolUses.map((t: any) => t.name));
+
+        // Execute tools via Python server
+        const toolResults = await Promise.all(
+          toolUses.map(async (toolUse: any) => {
+            console.log(`Executing: ${toolUse.name}`, toolUse.input);
+
+            try {
+              const result = await executeTool(toolUse.name, toolUse.input);
+              console.log(`Result from ${toolUse.name}:`, result);
+
+              return {
+                type: 'tool_result',
+                tool_use_id: toolUse.id,
+                content: result
+              };
+            } catch (error: any) {
+              console.error(`Error executing ${toolUse.name}:`, error);
+              return {
+                type: 'tool_result',
+                tool_use_id: toolUse.id,
+                content: `Error: ${error.message}`,
+                is_error: true
+              };
+            }
+          })
+        );
+
+        // Add assistant response and tool results to conversation
+        conversationHistory.push(
+          { role: 'assistant', content: response.content },
+          { role: 'user', content: toolResults }
+        );
+
+        console.log('Sending tool results back to Claude...');
+        response = await client.beta.messages.create({
+          max_tokens: 2000,
+          messages: conversationHistory,
+          model: 'claude-sonnet-4-5-20250929',
+          tools: tools,
+        });
+      }
+
+      // Extract final text response
+      const textBlocks = response.content
+        .filter((block: any) => block.type === "text")
+        .map((block: any) => block.text);
+
       const allText = textBlocks.join("\n");
 
-      /*
-      // Classify intent
-      const intentResult = await mockClassifyIntent(userMessage.text);
-      
-      // Get activated servers based on intent
-      const servers = mockGetActivatedServers(intentResult.intent);
-      setActivatedServers(servers);
-
-      */
-
-
-      // Generate mock bot response
+      // Generate bot response
       const botResponse: Message = {
         id: (Date.now() + 1).toString(),
         text: allText,
-        sender: 'bot',
+        sender: 'assistant',
         timestamp: new Date(),
       };
 
@@ -88,8 +184,8 @@ export default function ChatbotPage() {
       console.error('Error processing message:', error);
       const errorResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: 'Sorry, I encountered an error processing your request.',
-        sender: 'bot',
+        text: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        sender: 'assistant',
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorResponse]);
@@ -160,4 +256,3 @@ export default function ChatbotPage() {
     </div>
   );
 }
-
