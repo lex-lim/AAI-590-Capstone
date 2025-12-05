@@ -1,0 +1,16 @@
+[project]
+name = "assistant-mcp-server"
+version = "0.1.0"
+description = "MCP server for personal assistant tools"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=1.0.0",
+]
+
+[project.scripts]
+assistant-mcp-server = "assistant_mcp.server:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_system"
