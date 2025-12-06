@@ -3,9 +3,11 @@
 
 import sys
 from pathlib import Path
+import os
 import asyncio
 import json
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+from intent_classifier import IntentClassifier, Vocabulary
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
@@ -20,6 +22,8 @@ from services.shopping import ShoppingListService
 from services.media import MediaService
 from services.smart_home import SmartHomeService
 from services.phone import PhoneService
+
+sys.modules['__main__'].Vocabulary = Vocabulary
 
 # Initialize FastAPI app
 app = FastAPI(title="Assistant Tools API")
@@ -41,6 +45,21 @@ media_service = MediaService()
 smart_home_service = SmartHomeService()
 phone_service = PhoneService()
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, 'best_model_with_oos.pt')
+VOCAB_PATH = os.path.join(BASE_DIR, 'vocab.pkl')
+
+print(f"BASE_DIR: {BASE_DIR}")
+print(f"MODEL_PATH: {MODEL_PATH}")
+print(f"VOCAB_PATH: {VOCAB_PATH}")
+print(f"Model exists: {os.path.exists(MODEL_PATH)}")
+print(f"Vocab exists: {os.path.exists(VOCAB_PATH)}")
+
+# Then load
+intent_classifier = IntentClassifier(model_path=None)
+intent_classifier.load_vocab(VOCAB_PATH)
+intent_classifier.load_model(MODEL_PATH)
+print(f"✓ Intent classifier loaded from {BASE_DIR}")
 
 class ToolCall(BaseModel):
     """Request model for tool execution."""
@@ -61,288 +80,306 @@ async def root():
 
 
 @app.get("/tools")
-async def list_tools():
+async def list_tools(query: Optional[str] = None):
     """List all available tools with complete schemas."""
-    return {
-        "tools": [
-            {
-                "name": "calendar",
-                "description": "View calendar events for a specific date or date range",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {
-                        "date": {
-                            "type": "string",
-                            "description": "Date to view (YYYY-MM-DD format)"
-                        },
-                        "end_date": {
-                            "type": "string",
-                            "description": "Optional end date for range (YYYY-MM-DD format)"
-                        }
+    
+    all_tools = [
+        {
+            "name": "calendar",
+            "description": "View calendar events for a specific date or date range",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "date": {
+                        "type": "string",
+                        "description": "Date to view (YYYY-MM-DD format)"
                     },
-                    "required": ["date"]
-                }
-            },
-            {
-                "name": "calendar_update",
-                "description": "Add, modify, or delete calendar events",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {
-                        "action": {
-                            "type": "string",
-                            "enum": ["add", "modify", "delete"],
-                            "description": "Action to perform"
-                        },
-                        "title": {
-                            "type": "string",
-                            "description": "Event title"
-                        },
-                        "date": {
-                            "type": "string",
-                            "description": "Event date (YYYY-MM-DD)"
-                        },
-                        "time": {
-                            "type": "string",
-                            "description": "Event time (HH:MM)"
-                        },
-                        "duration": {
-                            "type": "string",
-                            "description": "Event duration (e.g., '1 hour', '30 minutes')"
-                        },
-                        "event_id": {
-                            "type": "string",
-                            "description": "Event ID for modify/delete actions"
-                        }
+                    "end_date": {
+                        "type": "string",
+                        "description": "Optional end date for range (YYYY-MM-DD format)"
+                    }
+                },
+                "required": ["date"]
+            }
+        },
+        {
+            "name": "calendar_update",
+            "description": "Add, modify, or delete calendar events",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["add", "modify", "delete"],
+                        "description": "Action to perform"
                     },
-                    "required": ["action"]
-                }
-            },
-            {
-                "name": "alarm",
-                "description": "Set, view, or delete alarms",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {
-                        "action": {
-                            "type": "string",
-                            "enum": ["set", "list", "delete", "delete_all"],
-                            "description": "Action to perform"
-                        },
-                        "time": {
-                            "type": "string",
-                            "description": "Alarm time (HH:MM)"
-                        },
-                        "label": {
-                            "type": "string",
-                            "description": "Optional alarm label"
-                        },
-                        "repeat": {
-                            "type": "array",
-                            "items": {
-                                "type": "string",
-                                "enum": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
-                            },
-                            "description": "Days to repeat alarm"
-                        },
-                        "alarm_id": {
-                            "type": "string",
-                            "description": "Alarm ID for delete action"
-                        }
+                    "title": {
+                        "type": "string",
+                        "description": "Event title"
                     },
-                    "required": ["action"]
-                }
-            },
-            {
-                "name": "change_speed",
-                "description": "Change playback speed or speech rate",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {
-                        "speed": {
-                            "type": "number",
-                            "description": "Speed multiplier (0.5 = half speed, 2.0 = double speed)",
-                            "minimum": 0.5,
-                            "maximum": 2.0
-                        },
-                        "context": {
-                            "type": "string",
-                            "enum": ["music", "speech", "video", "podcast"],
-                            "description": "What to adjust speed for"
-                        }
+                    "date": {
+                        "type": "string",
+                        "description": "Event date (YYYY-MM-DD)"
                     },
-                    "required": ["speed"]
-                }
-            },
-            {
-                "name": "change_volume",
-                "description": "Adjust volume level",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {
-                        "level": {
-                            "type": "number",
-                            "description": "Volume level (0-100) or relative change"
-                        },
-                        "relative": {
-                            "type": "boolean",
-                            "description": "If true, level is relative change (e.g., +10, -20)",
-                            "default": False
-                        },
-                        "device": {
-                            "type": "string",
-                            "description": "Specific device (e.g., 'speaker', 'headphones', 'system')"
-                        }
+                    "time": {
+                        "type": "string",
+                        "description": "Event time (HH:MM)"
                     },
-                    "required": ["level"]
-                }
-            },
-            {
-                "name": "shopping_list",
-                "description": "View all items on the shopping list",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {
-                        "category": {
+                    "duration": {
+                        "type": "string",
+                        "description": "Event duration (e.g., '1 hour', '30 minutes')"
+                    },
+                    "event_id": {
+                        "type": "string",
+                        "description": "Event ID for modify/delete actions"
+                    }
+                },
+                "required": ["action"]
+            }
+        },
+        {
+            "name": "alarm",
+            "description": "Set, view, or delete alarms",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["set", "list", "delete", "delete_all"],
+                        "description": "Action to perform"
+                    },
+                    "time": {
+                        "type": "string",
+                        "description": "Alarm time (HH:MM)"
+                    },
+                    "label": {
+                        "type": "string",
+                        "description": "Optional alarm label"
+                    },
+                    "repeat": {
+                        "type": "array",
+                        "items": {
                             "type": "string",
-                            "description": "Optional category filter (e.g., produce, dairy, meat)"
+                            "enum": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
                         },
-                        "checked": {
-                            "type": "boolean",
-                            "description": "Filter by checked status"
-                        }
+                        "description": "Days to repeat alarm"
+                    },
+                    "alarm_id": {
+                        "type": "string",
+                        "description": "Alarm ID for delete action"
+                    }
+                },
+                "required": ["action"]
+            }
+        },
+        {
+            "name": "change_speed",
+            "description": "Change playback speed or speech rate",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "speed": {
+                        "type": "number",
+                        "description": "Speed multiplier (0.5 = half speed, 2.0 = double speed)",
+                        "minimum": 0.5,
+                        "maximum": 2.0
+                    },
+                    "context": {
+                        "type": "string",
+                        "enum": ["music", "speech", "video", "podcast"],
+                        "description": "What to adjust speed for"
+                    }
+                },
+                "required": ["speed"]
+            }
+        },
+        {
+            "name": "change_volume",
+            "description": "Adjust volume level",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "level": {
+                        "type": "number",
+                        "description": "Volume level (0-100) or relative change"
+                    },
+                    "relative": {
+                        "type": "boolean",
+                        "description": "If true, level is relative change (e.g., +10, -20)",
+                        "default": False
+                    },
+                    "device": {
+                        "type": "string",
+                        "description": "Specific device (e.g., 'speaker', 'headphones', 'system')"
+                    }
+                },
+                "required": ["level"]
+            }
+        },
+        {
+            "name": "shopping_list",
+            "description": "View all items on the shopping list",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "category": {
+                        "type": "string",
+                        "description": "Optional category filter (e.g., produce, dairy, meat)"
+                    },
+                    "checked": {
+                        "type": "boolean",
+                        "description": "Filter by checked status"
                     }
                 }
-            },
-            {
-                "name": "shopping_list_update",
-                "description": "Add, remove, or check off items on shopping list",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {
-                        "action": {
-                            "type": "string",
-                            "enum": ["add", "remove", "check", "uncheck", "clear_checked"],
-                            "description": "Action to perform"
-                        },
-                        "item": {
-                            "type": "string",
-                            "description": "Item name"
-                        },
-                        "quantity": {
-                            "type": "string",
-                            "description": "Optional quantity (e.g., '2 pounds', '1 gallon')"
-                        },
-                        "category": {
-                            "type": "string",
-                            "description": "Optional category (e.g., produce, dairy)"
-                        }
-                    },
-                    "required": ["action", "item"]
-                }
-            },
-            {
-                "name": "timer",
-                "description": "Set, view, or cancel timers",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {
-                        "action": {
-                            "type": "string",
-                            "enum": ["set", "list", "cancel", "pause", "resume", "cancel_all"],
-                            "description": "Action to perform"
-                        },
-                        "duration": {
-                            "type": "string",
-                            "description": "Timer duration (e.g., '5 minutes', '1 hour 30 minutes', '45 seconds')"
-                        },
-                        "label": {
-                            "type": "string",
-                            "description": "Optional timer label"
-                        },
-                        "timer_id": {
-                            "type": "string",
-                            "description": "Timer ID for cancel/pause/resume actions"
-                        }
-                    },
-                    "required": ["action"]
-                }
-            },
-            {
-                "name": "find_phone",
-                "description": "Locate the user's phone by making it ring or showing location",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {
-                        "method": {
-                            "type": "string",
-                            "enum": ["ring", "location", "both"],
-                            "description": "How to find the phone"
-                        }
-                    },
-                    "required": ["method"]
-                }
-            },
-            {
-                "name": "play_music",
-                "description": "Play music by artist, song, album, genre, or playlist",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "What to play (song name, artist, genre, etc.)"
-                        },
-                        "type": {
-                            "type": "string",
-                            "enum": ["song", "artist", "album", "genre", "playlist", "podcast"],
-                            "description": "Type of music query"
-                        },
-                        "shuffle": {
-                            "type": "boolean",
-                            "description": "Whether to shuffle",
-                            "default": False
-                        },
-                        "source": {
-                            "type": "string",
-                            "description": "Music source (e.g., 'spotify', 'apple_music', 'youtube')"
-                        }
-                    },
-                    "required": ["query"]
-                }
-            },
-            {
-                "name": "smart_home",
-                "description": "Control smart home devices (lights, thermostat, locks, etc.)",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {
-                        "device_type": {
-                            "type": "string",
-                            "enum": ["light", "thermostat", "lock", "blinds", "outlet", "fan", "camera"],
-                            "description": "Type of device to control"
-                        },
-                        "device_name": {
-                            "type": "string",
-                            "description": "Specific device name or 'all' for all devices of that type"
-                        },
-                        "action": {
-                            "type": "string",
-                            "description": "Action to perform (e.g., 'on', 'off', 'dim', 'set temperature', 'lock', 'unlock')"
-                        },
-                        "value": {
-                            "type": "string",
-                            "description": "Value for the action (e.g., brightness %, temperature, color)"
-                        },
-                        "room": {
-                            "type": "string",
-                            "description": "Room name to control all devices in that room"
-                        }
-                    },
-                    "required": ["device_type", "action"]
-                }
             }
-        ]
+        },
+        {
+            "name": "shopping_list_update",
+            "description": "Add, remove, or check off items on shopping list",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["add", "remove", "check", "uncheck", "clear_checked"],
+                        "description": "Action to perform"
+                    },
+                    "item": {
+                        "type": "string",
+                        "description": "Item name"
+                    },
+                    "quantity": {
+                        "type": "string",
+                        "description": "Optional quantity (e.g., '2 pounds', '1 gallon')"
+                    },
+                    "category": {
+                        "type": "string",
+                        "description": "Optional category (e.g., produce, dairy)"
+                    }
+                },
+                "required": ["action", "item"]
+            }
+        },
+        {
+            "name": "timer",
+            "description": "Set, view, or cancel timers",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["set", "list", "cancel", "pause", "resume", "cancel_all"],
+                        "description": "Action to perform"
+                    },
+                    "duration": {
+                        "type": "string",
+                        "description": "Timer duration (e.g., '5 minutes', '1 hour 30 minutes', '45 seconds')"
+                    },
+                    "label": {
+                        "type": "string",
+                        "description": "Optional timer label"
+                    },
+                    "timer_id": {
+                        "type": "string",
+                        "description": "Timer ID for cancel/pause/resume actions"
+                    }
+                },
+                "required": ["action"]
+            }
+        },
+        {
+            "name": "find_phone",
+            "description": "Locate the user's phone by making it ring or showing location",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "method": {
+                        "type": "string",
+                        "enum": ["ring", "location", "both"],
+                        "description": "How to find the phone"
+                    }
+                },
+                "required": ["method"]
+            }
+        },
+        {
+            "name": "play_music",
+            "description": "Play music by artist, song, album, genre, or playlist",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "What to play (song name, artist, genre, etc.)"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": ["song", "artist", "album", "genre", "playlist", "podcast"],
+                        "description": "Type of music query"
+                    },
+                    "shuffle": {
+                        "type": "boolean",
+                        "description": "Whether to shuffle",
+                        "default": False
+                    },
+                    "source": {
+                        "type": "string",
+                        "description": "Music source (e.g., 'spotify', 'apple_music', 'youtube')"
+                    }
+                },
+                "required": ["query"]
+            }
+        },
+        {
+            "name": "smart_home",
+            "description": "Control smart home devices (lights, thermostat, locks, etc.)",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "device_type": {
+                        "type": "string",
+                        "enum": ["light", "thermostat", "lock", "blinds", "outlet", "fan", "camera"],
+                        "description": "Type of device to control"
+                    },
+                    "device_name": {
+                        "type": "string",
+                        "description": "Specific device name or 'all' for all devices of that type"
+                    },
+                    "action": {
+                        "type": "string",
+                        "description": "Action to perform (e.g., 'on', 'off', 'dim', 'set temperature', 'lock', 'unlock')"
+                    },
+                    "value": {
+                        "type": "string",
+                        "description": "Value for the action (e.g., brightness %, temperature, color)"
+                    },
+                    "room": {
+                        "type": "string",
+                        "description": "Room name to control all devices in that room"
+                    }
+                },
+                "required": ["device_type", "action"]
+            }
+        }
+    ]
+    
+    # If no query provided, return all tools
+    if not query:
+        return {"tools": all_tools}
+    
+    # Use intent classifier to filter tools
+    prediction = intent_classifier.predict_intent(query)
+    relevant_tool_names = intent_classifier.get_relevant_tools(query)
+    
+    if prediction['is_oos'] or not relevant_tool_names:
+        filtered_tools = []
+    else:
+        filtered_tools = [tool for tool in all_tools if tool['name'] in relevant_tool_names]
+    
+    return {
+        "tools": filtered_tools,
+        "intent": prediction['intent'],
+        "confidence": prediction['confidence']
     }
 
 

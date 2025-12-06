@@ -33,11 +33,21 @@ export default function ChatbotPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Fetch tools from Python server
-  const getTools = async () => {
+  // Fetch tools from Python server with optional query for filtering
+  const getTools = async (query?: string) => {
     try {
-      const response = await fetch(`${PYTHON_API_URL}/tools`);
+      const url = query 
+        ? `${PYTHON_API_URL}/tools?query=${encodeURIComponent(query)}`
+        : `${PYTHON_API_URL}/tools`;
+      
+      const response = await fetch(url);
       const data = await response.json();
+      
+      // Log intent prediction if available
+      if (data.intent && query) {
+        console.log(`Intent: ${data.intent} (confidence: ${data.confidence?.toFixed(2)})`);
+      }
+      
       return data.tools;
     } catch (error) {
       console.error('Error fetching tools:', error);
@@ -77,6 +87,7 @@ export default function ChatbotPage() {
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    const userQuery = inputText.trim();
     setInputText('');
     setIsProcessing(true);
 
@@ -91,9 +102,10 @@ export default function ChatbotPage() {
     });
 
     try {
-      console.log('Fetching tools from Python server...');
-      const tools = await getTools();
-      console.log(`Loaded ${tools.length} tools`);
+      console.log('Fetching filtered tools from Python server...');
+      // Pass user query to get filtered tools
+      const tools = await getTools(userQuery);
+      console.log(`Loaded ${tools.length} filtered tools`);
 
       // Update activated servers display
       if (tools.length > 0) {
@@ -101,14 +113,19 @@ export default function ChatbotPage() {
           name: 'Assistant Tools',
           description: `${tools.length} tools available: ${tools.map((t: any) => t.name).join(', ')}`
         }]);
+      } else {
+        setActivatedServers([{
+          name: 'Assistant Tools',
+          description: 'No relevant tools for this query'
+        }]);
       }
 
-      console.log('Calling Claude with tools...');
+      console.log('Calling Claude with filtered tools...');
       let response = await client.beta.messages.create({
         max_tokens: 2000,
         messages: history,
         model: 'claude-sonnet-4-5-20250929',
-        tools: tools, // Pass tools from Python server
+        tools: tools, // Pass filtered tools from Python server
       });
 
       let conversationHistory = [...history];
