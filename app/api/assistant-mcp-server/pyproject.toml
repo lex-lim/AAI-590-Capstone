@@ -6,6 +6,10 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "mcp>=1.0.0",
+    "fastapi",
+    "uvicorn",
+    "torch",
+    "numpy",
 ]
 
 [project.scripts]
@@ -13,4 +17,7 @@ assistant-mcp-server = "assistant_mcp.server:main"
 
 [build-system]
 requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_system"
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

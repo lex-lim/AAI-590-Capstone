@@ -7,7 +7,7 @@ import os
 import asyncio
 import json
 from typing import Any, Dict, Optional
-from intent_classifier import IntentClassifier, Vocabulary
+from assistant_mcp.intent_classifier import IntentClassifier, Vocabulary
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
@@ -16,12 +16,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from services.calendar import CalendarService
-from services.alarm import AlarmService
-from services.shopping import ShoppingListService
-from services.media import MediaService
-from services.smart_home import SmartHomeService
-from services.phone import PhoneService
+from assistant_mcp.services.calendar import CalendarService
+from assistant_mcp.services.alarm import AlarmService
+from assistant_mcp.services.shopping import ShoppingListService
+from assistant_mcp.services.media import MediaService
+from assistant_mcp.services.smart_home import SmartHomeService
+from assistant_mcp.services.phone import PhoneService
 
 sys.modules['__main__'].Vocabulary = Vocabulary
 
@@ -533,7 +533,12 @@ async def execute_tool(tool_call: ToolCall):
         return ToolResponse(result=str(e), error=True)
 
 
-if __name__ == "__main__":
+def main():
+    """Entry point for the MCP server."""
     import uvicorn
     print("Starting Assistant Tools HTTP Server on http://localhost:8080")
     uvicorn.run(app, host="0.0.0.0", port=8080)
+
+
+if __name__ == "__main__":
+    main()

@@ -31,6 +31,21 @@ Write-Host "Installing Python dependencies..."
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 
+# Install MCP server
+Write-Host "Installing MCP server..."
+pip install mcp
+pip install -e "$ScriptDir\api\assistant-mcp-server"
+
+# Start MCP server in background
+Write-Host "🤖 Starting MCP server..." -ForegroundColor Green
+$McpJob = Start-Job -ScriptBlock {
+    param($ApiDir)
+    Set-Location $ApiDir
+    & ".\venv\Scripts\Activate.ps1"
+    python -m assistant_mcp.server
+} -ArgumentList (Get-Location).Path
+Write-Host "✅ MCP server started (Job ID: $($McpJob.Id))" -ForegroundColor Green
+
 # Start FastAPI backend in background
 Write-Host "🔥 Starting FastAPI backend server..." -ForegroundColor Green
 $BackendJob = Start-Job -ScriptBlock {
@@ -80,9 +95,11 @@ npm run dev
 Write-Host ""
 Write-Host "🛑 Shutting down..." -ForegroundColor Yellow
 
-# Stop the backend job
+# Stop the backend and MCP jobs
 Stop-Job -Job $BackendJob
+Stop-Job -Job $McpJob
 Remove-Job -Job $BackendJob
+Remove-Job -Job $McpJob
 
 Write-Host "✅ Application stopped" -ForegroundColor Green
 

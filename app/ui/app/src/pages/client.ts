@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
-import {apikey} from '../../../../../key'
+import {apikey} from '../../../../key.ts'
 
 
 export const client = new Anthropic({
