@@ -3,7 +3,10 @@ face_data*
 .venv
 .vscode
 .DS_Store
-**/__pycache__
+**/__pycache__/
+**/__pycache__/**
+*.pyc
+*.pyo
 app/api/venv
 key.ts
 **/*-info
