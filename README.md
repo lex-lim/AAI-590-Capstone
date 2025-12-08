@@ -24,33 +24,33 @@ AAI-590-Capstone/
 │   ├── api/
 │   │   ├── assistant-mcp-server/
 │   │   │   └── src/assistant_mcp/
-│   │   │       ├── server.py
-│   │   │       ├── intent_classifier.py
-│   │   │       └── services/
+│   │   │       ├── server.py (MCP server for tools retrival and execution)
+│   │   │       ├── intent_classifier.py (intent classification code used in the MCP server)
+│   │   │       └── services/ (All custom functionality code)
 │   │   │           ├── alarm.py, calendar.py, media.py
 │   │   │           ├── phone.py, shopping.py, smart_home.py
-│   │   ├── face_classifier.py
-│   │   ├── main.py
+│   │   ├── face_classifier.py (Used in web app for facial recognition step)
+│   │   ├── main.py (server used by web app to access facial recognition)
 │   │   └── models.py
 │   └── ui/app/
 │       └── src/
 │           ├── App.tsx
 │           └── pages/
-│               ├── ChatbotPage.tsx
-│               └── LandingPage.tsx
+│               ├── ChatbotPage.tsx (Main interface UI page)
+│               └── LandingPage.tsx (Authentication page)
 ├── facial recognition/
-│   ├── CNN_Classifier.ipynb
-│   ├── collect_face_data.py
-│   ├── detect_and_classify.py
+│   ├── CNN_Classifier.ipynb (training and eval of facial recognition)
+│   ├── collect_face_data.py (Custom data collector)
+│   ├── detect_and_classify.py (test script for facial recognition)
 │   └── face_classifier_transfer_final.keras
 ├── intent classifiers/
-│   ├── IntentClassifier_Alexis.ipynb
-│   ├── IntentClassifier_Pallav.ipynb
-│   ├── IntentClassifierEDA.ipynb
+│   ├── IntentClassifier_Alexis.ipynb (custom picked intent classifier)
+│   ├── IntentClassifier_Pallav.ipynb (custom picked intent classifier)
+│   ├── IntentClassifierEDA.ipynb (EDA for full intent classes)
 │   └── best_model_with_oos.pt
 ├── face_data/
-├── assistant.py
-├── setup.sh
+├── assistant.py (assistnant script that handles wake word activation)
+├── setup.sh (sets up venv for python)
 └── README.md
 ```
 
