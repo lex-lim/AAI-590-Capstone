@@ -16,7 +16,44 @@ Assistant behavior adapts based on the detected user.
 **Agent Workflow**
 Identity → Intent → Tool routing pipeline, compatible with LLM-based reasoning.
 
-  
+## Project Structure
+
+```
+AAI-590-Capstone/
+├── app/
+│   ├── api/
+│   │   ├── assistant-mcp-server/
+│   │   │   └── src/assistant_mcp/
+│   │   │       ├── server.py
+│   │   │       ├── intent_classifier.py
+│   │   │       └── services/
+│   │   │           ├── alarm.py, calendar.py, media.py
+│   │   │           ├── phone.py, shopping.py, smart_home.py
+│   │   ├── face_classifier.py
+│   │   ├── main.py
+│   │   └── models.py
+│   └── ui/app/
+│       └── src/
+│           ├── App.tsx
+│           └── pages/
+│               ├── ChatbotPage.tsx
+│               └── LandingPage.tsx
+├── facial recognition/
+│   ├── CNN_Classifier.ipynb
+│   ├── collect_face_data.py
+│   ├── detect_and_classify.py
+│   └── face_classifier_transfer_final.keras
+├── intent classifiers/
+│   ├── IntentClassifier_Alexis.ipynb
+│   ├── IntentClassifier_Pallav.ipynb
+│   ├── IntentClassifierEDA.ipynb
+│   └── best_model_with_oos.pt
+├── face_data/
+├── assistant.py
+├── setup.sh
+└── README.md
+```
+
 ## How It Works
 
 **1. Face Recognition**

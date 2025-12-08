@@ -8,5 +8,4 @@ face_data*
 *.pyc
 *.pyo
 app/api/venv
-key.ts
 **/*-info
